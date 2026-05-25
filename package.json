@@ -1,0 +1,19 @@
+{
+  "name": "@styletoken/connect",
+  "version": "0.1.0",
+  "description": "One-time CLI to connect Claude Code to your Styletoken project",
+  "bin": {
+    "styletoken-connect": "./index.js"
+  },
+  "files": [
+    "index.js"
+  ],
+  "scripts": {
+    "postinstall": "echo 'Styletoken Connect ready. Run: npx @styletoken/connect'"
+  },
+  "dependencies": {},
+  "devDependencies": {},
+  "publishConfig": {
+    "access": "public"
+  }
+}
