@@ -1,4 +1,4 @@
-import { getSupabase } from './supabase.js'
+import { requireEnv, query, update } from './supabase.js'
 
 let cachedUserId: string | null = null
 
@@ -13,28 +13,18 @@ export function getAuthToken(): string {
 export async function authenticate(): Promise<string> {
   if (cachedUserId) return cachedUserId
 
+  requireEnv()
+
   const token = getAuthToken()
-  const supabase = getSupabase()
 
-  const { data, error } = await supabase
-    .from('user_tokens')
-    .select('user_id')
-    .eq('token_hash', token)
-    .single()
+  const data = await query('user_tokens', { token_hash: token })
 
-  if (error || !data) {
+  if (!data || !data.user_id) {
     throw new Error('Invalid API token')
   }
 
-  // Update last_used_at
-  await supabase
-    .from('user_tokens')
-    .update({ last_used_at: new Date().toISOString() })
-    .eq('token_hash', token)
+  await update('user_tokens', { token_hash: token }, { last_used_at: new Date().toISOString() })
 
-  if (!data.user_id) {
-    throw new Error('Invalid API token')
-  }
   cachedUserId = String(data.user_id)
   return cachedUserId
 }

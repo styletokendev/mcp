@@ -1,4 +1,3 @@
-import { getSupabase } from '../supabase.js'
 import type { ToolResult } from '../types.js'
 
 // Embedded metadata for all components — mirrors src/data/component-meta.ts on the site

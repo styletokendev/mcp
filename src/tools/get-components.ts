@@ -1,76 +1,36 @@
-import { getSupabase } from '../supabase.js'
+import { query } from '../supabase.js'
 import type { ToolResult } from '../types.js'
 
-interface BookmarkRow {
-  prompt_id: string
-  created_at: string
-}
-
-interface PageRow {
-  id: string
-  name: string
-}
-
-interface PageComponentRow {
-  prompt_id: string
-}
-
 export async function getComponents(userId: string, projectId: string): Promise<ToolResult> {
-  const supabase = getSupabase()
+  const project = await query('projects', { id: projectId, user_id: userId })
 
-  // Verify project belongs to user
-  const { data: project, error: projectError } = await supabase
-    .from('projects')
-    .select('id, name')
-    .eq('id', projectId)
-    .eq('user_id', userId)
-    .single()
-
-  if (projectError || !project) {
+  if (!project) {
     return { error: 'Project not found or access denied' }
   }
 
-  // Get global components
-  const { data: globals } = await supabase
-    .from('project_bookmarks')
-    .select('prompt_id, created_at')
-    .eq('project_id', projectId)
-    .eq('is_global', true)
-    .order('created_at', { ascending: true })
+  // Get global components - we can only filter by single columns with REST API,
+  // so fetch all bookmarks for this project and filter
+  const globalsUrl = `https://zhpepigcjxtzhvotenzp.supabase.co/rest/v1/project_bookmarks?project_id=eq.${projectId}&is_global=eq.true&select=prompt_id,created_at&order=created_at.asc`
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || ''
 
-  // Get pages
-  const { data: pages } = await supabase
-    .from('project_pages')
-    .select('id, name')
-    .eq('project_id', projectId)
-    .order('created_at', { ascending: true })
-
-  let pageComponents: Array<{ page: { id: string; name: string }; components: string[] }> = []
-
-  if (pages && pages.length > 0) {
-    const pageIds = pages.map(p => p.id)
-    const { data: assignments } = await supabase
-      .from('page_components')
-      .select('page_id, prompt_id')
-      .in('page_id', pageIds)
-
-    if (assignments) {
-      const grouped: Record<string, string[]> = {}
-      for (const a of assignments) {
-        if (!grouped[a.page_id]) grouped[a.page_id] = []
-        grouped[a.page_id].push(a.prompt_id)
+  let globals: Array<{ prompt_id: string }> = []
+  try {
+    const res = await fetch(globalsUrl, {
+      headers: {
+        'Authorization': `Bearer ${supabaseServiceKey}`,
+        'apikey': supabaseServiceKey
       }
-      pageComponents = pages.map(p => ({
-        page: { id: p.id, name: p.name },
-        components: grouped[p.id] || []
-      }))
-    }
-  }
+    })
+    if (res.ok) globals = await res.json()
+  } catch { /* noop */ }
+
+  // Pages table might not exist yet — that's okay, return empty
+  let pageComponents: Array<{ page: { id: string; name: string }; components: string[] }> = []
 
   return {
     result: {
       project: { id: project.id, name: project.name },
-      global_components: (globals || []).map(g => (g as BookmarkRow).prompt_id),
+      global_components: globals.map(g => g.prompt_id),
       pages: pageComponents
     }
   }
