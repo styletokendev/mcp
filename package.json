@@ -4,10 +4,10 @@
   "description": "MCP server for Styletoken — gives AI agents access to project style tokens and components",
   "type": "module",
   "bin": {
-    "styletoken-mcp": "./dist/index.js"
+    "styletoken-mcp": "./bin/cli.js"
   },
   "files": [
-    "dist"
+    "bin"
   ],
   "scripts": {},
   "dependencies": {
